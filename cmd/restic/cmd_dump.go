@@ -240,26 +240,44 @@ func tarTree(ctx context.Context, repo restic.Repository, rootNode *restic.Node,
 }
 
 func tarNode(ctx context.Context, tw *tar.Writer, node *restic.Node, repo restic.Repository) error {
-
 	header := &tar.Header{
-		Name:       node.Path,
-		Size:       int64(node.Size),
-		Mode:       int64(node.Mode),
+		Name: node.Path,
+		Size: int64(node.Size),
+		// Mode fits 21 bits in PAX format (7 octal digits). All higher bits in
+		// node.Mode are related to the node type and dealt with below.
+		//
+		// https://golang.org/pkg/archive/tar/#Format
+		Mode:       int64(node.Mode & 07777777),
 		Uid:        int(node.UID),
 		Gid:        int(node.GID),
 		ModTime:    node.ModTime,
 		AccessTime: node.AccessTime,
 		ChangeTime: node.ChangeTime,
+
+		Format:     tar.FormatPAX,
 		PAXRecords: parseXattrs(node.ExtendedAttributes),
 	}
 
-	if node.Type == "symlink" {
+	switch node.Type {
+	case "dir":
+		header.Typeflag = tar.TypeDir
+	case "file":
+		header.Typeflag = tar.TypeReg
+	case "symlink":
 		header.Typeflag = tar.TypeSymlink
 		header.Linkname = node.LinkTarget
-	}
-
-	if node.Type == "dir" {
-		header.Typeflag = tar.TypeDir
+	case "dev":
+		header.Typeflag = tar.TypeBlock
+		header.Devmajor = int64((node.Device >> 8) & 0xff)
+		header.Devminor = int64(node.Device & 0xff)
+	case "chardev":
+		header.Typeflag = tar.TypeChar
+		header.Devmajor = int64((node.Device >> 8) & 0xff)
+		header.Devminor = int64(node.Device & 0xff)
+	case "fifo":
+		header.Typeflag = tar.TypeFifo
+	case "socket":
+		// TODO: skip?
 	}
 
 	err := tw.WriteHeader(header)
