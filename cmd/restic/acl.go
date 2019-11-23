@@ -101,12 +101,12 @@ func (a *acl) decode(xattr []byte) {
 func (a *acl) encode() []byte {
 	buf := new(bytes.Buffer)
 	ae := new(aclElem)
-	binary.Write(buf, binary.LittleEndian, &a.Version)
+	_ = binary.Write(buf, binary.LittleEndian, &a.Version)
 	for _, elem := range a.List {
 		ae.Tag = uint16(elem.getType())
 		ae.Perm = elem.Perm
 		ae.ID = elem.getID()
-		binary.Write(buf, binary.LittleEndian, ae)
+		_ = binary.Write(buf, binary.LittleEndian, ae)
 	}
 	return buf.Bytes()
 }
