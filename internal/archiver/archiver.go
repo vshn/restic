@@ -627,41 +627,6 @@ func (arch *Archiver) SaveTree(ctx context.Context, snPath string, atree *Tree, 
 	return tree, nil
 }
 
-type fileInfoSlice []os.FileInfo
-
-func (fi fileInfoSlice) Len() int {
-	return len(fi)
-}
-
-func (fi fileInfoSlice) Swap(i, j int) {
-	fi[i], fi[j] = fi[j], fi[i]
-}
-
-func (fi fileInfoSlice) Less(i, j int) bool {
-	return fi[i].Name() < fi[j].Name()
-}
-
-func readdir(filesystem fs.FS, dir string) ([]os.FileInfo, error) {
-	f, err := filesystem.OpenFile(dir, fs.O_RDONLY|fs.O_NOFOLLOW, 0)
-	if err != nil {
-		return nil, errors.Wrap(err, "Open")
-	}
-
-	entries, err := f.Readdir(-1)
-	if err != nil {
-		_ = f.Close()
-		return nil, errors.Wrapf(err, "Readdir %v failed", dir)
-	}
-
-	err = f.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Sort(fileInfoSlice(entries))
-	return entries, nil
-}
-
 func readdirnames(filesystem fs.FS, dir string) ([]string, error) {
 	f, err := filesystem.OpenFile(dir, fs.O_RDONLY|fs.O_NOFOLLOW, 0)
 	if err != nil {
